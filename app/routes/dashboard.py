@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import (
     HANA_HOST, HANA_PORT, HANA_SCHEMA,
-    APPROVER_PHONES, CONFIRMATION_PHONES, TEMPLATE_NAME, CONFIRM_TMPL, WA_PHONE_ID,
+    APPROVER_PHONES, CONFIRMATION_PHONES, TEMPLATE_NAME, CONFIRM_TMPL, ERROR_TMPL, ITEMS_TMPL, WA_PHONE_ID,
 )
 from app.db.tracking import get_sent_records
 from app.logging_setup import LOG_DIR
@@ -42,6 +42,18 @@ async def dashboard(request: Request):
         if hasattr(sent_at, "strftime"):
             rec["SentAt"] = sent_at.strftime("%Y-%m-%d %H:%M:%S")
 
+    # Computed metrics
+    approved_count = sum(1 for r in sent_records if r.get("Status") == "APPROVE")
+    rejected_count = sum(1 for r in sent_records if r.get("Status") == "REJECT")
+    pending_count = len(sent_records) - approved_count - rejected_count
+
+    total_decisions = stats["approvals"] + stats["rejections"]
+    approval_rate = round(stats["approvals"] / total_decisions * 100) if total_decisions > 0 else 0
+    rejection_rate = round(stats["rejections"] / total_decisions * 100) if total_decisions > 0 else 0
+
+    total_attempts = stats["messages_sent"] + stats["messages_failed"]
+    send_success_rate = round(stats["messages_sent"] / total_attempts * 100) if total_attempts > 0 else 100
+
     # Read last 100 lines from each log file
     log_data: dict[str, str] = {}
     for lf in LOG_FILES:
@@ -60,6 +72,12 @@ async def dashboard(request: Request):
         "sent_records": sent_records,
         "log_files": LOG_FILES,
         "log_data": log_data,
+        "approved_count": approved_count,
+        "rejected_count": rejected_count,
+        "pending_count": pending_count,
+        "approval_rate": approval_rate,
+        "rejection_rate": rejection_rate,
+        "send_success_rate": send_success_rate,
         "config": {
             "hana_host": f"{HANA_HOST}:{HANA_PORT}",
             "schema": HANA_SCHEMA,
@@ -67,6 +85,8 @@ async def dashboard(request: Request):
             "confirmation_phones": ", ".join(CONFIRMATION_PHONES),
             "template": TEMPLATE_NAME,
             "confirm_template": CONFIRM_TMPL,
+            "error_template": ERROR_TMPL,
+            "items_template": ITEMS_TMPL,
             "wa_phone_id": WA_PHONE_ID,
         },
         "now": now.strftime("%Y-%m-%d %H:%M:%S"),

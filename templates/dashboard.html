@@ -6,146 +6,562 @@
     <title>Jivo WA Approval — Dashboard</title>
     <meta http-equiv="refresh" content="30">
     <style>
+        :root {
+            --bg: #f0f2f5;
+            --card: rgba(255,255,255,0.85);
+            --card-border: rgba(0,0,0,0.06);
+            --card-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+            --card-shadow-hover: 0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06);
+            --text: #1a1a2e;
+            --text-secondary: #555770;
+            --text-dim: #8b8fa3;
+            --accent: #6366f1;
+            --accent-light: #eef2ff;
+            --accent-glow: rgba(99,102,241,0.2);
+            --green: #16a34a;
+            --green-bg: #f0fdf4;
+            --green-border: #bbf7d0;
+            --red: #dc2626;
+            --red-bg: #fef2f2;
+            --red-border: #fecaca;
+            --amber: #d97706;
+            --amber-bg: #fffbeb;
+            --amber-border: #fde68a;
+            --blue: #2563eb;
+            --blue-bg: #eff6ff;
+            --blue-border: #bfdbfe;
+            --radius: 16px;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
-        .header { background: linear-gradient(135deg, #1e293b, #334155); padding: 20px 30px; border-bottom: 2px solid #3b82f6; }
-        .header h1 { font-size: 1.5rem; color: #60a5fa; }
-        .header .subtitle { color: #94a3b8; font-size: 0.85rem; margin-top: 4px; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
-        .stat-card .label { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
-        .stat-card .value { font-size: 1.8rem; font-weight: 700; margin-top: 4px; }
-        .stat-card .value.green { color: #4ade80; }
-        .stat-card .value.blue { color: #60a5fa; }
-        .stat-card .value.red { color: #f87171; }
-        .stat-card .value.yellow { color: #fbbf24; }
-        .stat-card .value.purple { color: #c084fc; }
-        .stat-card .detail { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 14px;
+            overflow-x: hidden;
+        }
 
-        .section { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #334155; }
-        .section h2 { font-size: 1.1rem; color: #60a5fa; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+        /* Soft animated background blobs */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(150px);
+            opacity: 0.4;
+            z-index: 0;
+            animation: float 25s ease-in-out infinite;
+        }
+        body::before {
+            width: 700px; height: 700px;
+            background: linear-gradient(135deg, #c7d2fe, #e0e7ff);
+            top: -300px; left: -200px;
+        }
+        body::after {
+            width: 600px; height: 600px;
+            background: linear-gradient(135deg, #bbf7d0, #d9f99d);
+            bottom: -250px; right: -150px;
+            animation-delay: -12s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(40px, -50px) scale(1.05); }
+            66% { transform: translate(-30px, 30px) scale(0.95); }
+        }
 
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 10px 12px; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
-        td { padding: 10px 12px; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
-        tr:hover { background: #334155; }
+        /* Glass card base */
+        .glass {
+            background: var(--card);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
+            box-shadow: var(--card-shadow);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--card-shadow-hover);
+        }
 
-        .badge { padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-        .badge.pending { background: #fbbf24; color: #1e293b; }
-        .badge.approved, .badge.sent { background: #4ade80; color: #1e293b; }
-        .badge.rejected, .badge.error { background: #f87171; color: #1e293b; }
-        .badge.info { background: #60a5fa; color: #1e293b; }
+        /* Header */
+        .header {
+            position: relative;
+            z-index: 1;
+            padding: 18px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(24px);
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+        }
+        .header-left h1 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #4f46e5, #6366f1, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-left .tagline {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+        .header-meta {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+        }
+        .header-meta strong { color: var(--text); }
 
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
-        .config-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
-        .config-item .key { color: #94a3b8; }
-        .config-item .val { color: #e2e8f0; font-family: monospace; }
+        /* Pulse dot */
+        .pulse-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            margin-right: 6px;
+            box-shadow: 0 0 6px rgba(22,163,74,0.4);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(22,163,74,0.4); }
+            50% { opacity: 0.5; box-shadow: 0 0 16px rgba(22,163,74,0.5); }
+        }
 
-        .log-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
-        .log-tab { background: #334155; color: #94a3b8; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
-        .log-tab.active { background: #3b82f6; color: white; }
-        .log-content { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto; font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 0.78rem; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+        .container { max-width: 1500px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
 
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+        /* Status pills */
+        .status-bar { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .pill {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            animation: fadeSlideIn 0.5s ease both;
+        }
+        .pill.ok { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .pill.warn { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+        .pill.err { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
 
-        .refresh-note { text-align: center; color: #475569; font-size: 0.75rem; margin-top: 16px; }
+        /* Stat cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+        .stat-card {
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 4px;
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        .stat-card.c-green::before { background: linear-gradient(90deg, var(--green), #4ade80, transparent); }
+        .stat-card.c-red::before { background: linear-gradient(90deg, var(--red), #f87171, transparent); }
+        .stat-card.c-amber::before { background: linear-gradient(90deg, var(--amber), #fbbf24, transparent); }
+        .stat-card.c-blue::before { background: linear-gradient(90deg, var(--blue), #60a5fa, transparent); }
+        .stat-card.c-accent::before { background: linear-gradient(90deg, var(--accent), #818cf8, transparent); }
+
+        .stat-card .label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+        }
+        .stat-card .num {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-top: 6px;
+            line-height: 1;
+        }
+        .stat-card .sub {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+        .num.green { color: var(--green); }
+        .num.red { color: var(--red); }
+        .num.amber { color: var(--amber); }
+        .num.blue { color: var(--blue); }
+        .num.accent { color: var(--accent); }
+        .num.gray { color: #b0b4c8; }
+
+        /* Stagger animation for cards */
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card:nth-child(1) { animation: fadeSlideIn 0.45s ease 0.05s both; }
+        .stat-card:nth-child(2) { animation: fadeSlideIn 0.45s ease 0.1s both; }
+        .stat-card:nth-child(3) { animation: fadeSlideIn 0.45s ease 0.15s both; }
+        .stat-card:nth-child(4) { animation: fadeSlideIn 0.45s ease 0.2s both; }
+        .stat-card:nth-child(5) { animation: fadeSlideIn 0.45s ease 0.25s both; }
+        .stat-card:nth-child(6) { animation: fadeSlideIn 0.45s ease 0.3s both; }
+        .stat-card:nth-child(7) { animation: fadeSlideIn 0.45s ease 0.35s both; }
+        .stat-card:nth-child(8) { animation: fadeSlideIn 0.45s ease 0.4s both; }
+
+        /* Grid layouts */
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+        @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr; } }
+
+        /* Card sections */
+        .card { overflow: hidden; }
+        .card-head {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text);
+            background: rgba(255,255,255,0.5);
+        }
+        .card-head .cnt { font-weight: 500; color: var(--text-dim); font-size: 0.72rem; text-transform: none; }
+        .card-body { padding: 14px 18px; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        th {
+            text-align: left;
+            padding: 8px 10px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(8px);
+        }
+        td { padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.03); color: var(--text-secondary); }
+        tr { transition: background 0.2s; }
+        tr:hover { background: rgba(99,102,241,0.04); }
+
+        /* Badges */
+        .badge {
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.66rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            display: inline-block;
+        }
+        .badge.pending { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+        .badge.approve { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .badge.reject { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .badge.sent { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+        .badge.error { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .badge.info { background: var(--accent-light); color: var(--accent); border: 1px solid #c7d2fe; }
+
+        /* Config table */
+        .cfg td { padding: 6px 0; font-size: 0.8rem; border-bottom: 1px solid rgba(0,0,0,0.04); }
+        .cfg td:first-child { color: var(--text-dim); width: 40%; padding-right: 10px; font-weight: 500; }
+        .cfg td:last-child { color: var(--text); font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.74rem; word-break: break-all; }
+
+        .scroll-area { max-height: 350px; overflow-y: auto; }
+        .scroll-area::-webkit-scrollbar { width: 5px; }
+        .scroll-area::-webkit-scrollbar-track { background: transparent; }
+        .scroll-area::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        .scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.18); }
+
+        /* Summary footer */
+        .summary {
+            display: flex;
+            gap: 20px;
+            padding: 12px 18px;
+            border-top: 1px solid var(--card-border);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            flex-wrap: wrap;
+            background: rgba(255,255,255,0.4);
+        }
+        .summary strong { font-weight: 700; }
+
+        /* Detail text */
+        .detail-text { max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .detail-text:hover { white-space: normal; word-break: break-word; }
+
+        /* Log viewer */
+        .log-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 10px 18px;
+            border-bottom: 1px solid var(--card-border);
+            flex-wrap: wrap;
+            background: rgba(255,255,255,0.4);
+        }
+        .log-tab {
+            background: rgba(0,0,0,0.04);
+            color: var(--text-dim);
+            border: 1px solid transparent;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.72rem;
+            font-weight: 600;
+            transition: all 0.25s ease;
+        }
+        .log-tab:hover { background: rgba(0,0,0,0.07); color: var(--text); }
+        .log-tab.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+            box-shadow: 0 2px 10px var(--accent-glow);
+        }
+        .log-content {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 16px 18px;
+            max-height: 350px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.72rem;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .log-content::-webkit-scrollbar { width: 5px; }
+        .log-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.74rem;
+            padding: 18px;
+            margin-top: 4px;
+        }
+        .footer a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .footer a:hover { color: #4f46e5; }
+
+        /* Progress bar */
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background: rgba(0,0,0,0.06);
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 1s ease;
+        }
+        .progress-fill.green { background: linear-gradient(90deg, var(--green), #4ade80); }
+        .progress-fill.amber { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+        .progress-fill.red { background: linear-gradient(90deg, var(--red), #f87171); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; align-items: flex-start; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 </head>
 <body>
+    <!-- Header -->
     <div class="header">
-        <h1>Jivo WA Approval Service</h1>
-        <div class="subtitle">WhatsApp SAP B1 Purchase Order Approval — Real-time Dashboard</div>
+        <div class="header-left">
+            <h1>Jivo WA Approval Service</h1>
+            <div class="tagline">WhatsApp SAP B1 Purchase Order Approval &mdash; Real-time Dashboard</div>
+        </div>
+        <div class="header-meta">
+            <span><span class="pulse-dot"></span>Live</span>
+            <span>Uptime: <strong id="live-uptime">{{ uptime }}</strong></span>
+            <span>Started: <strong>{{ stats.start_time or 'N/A' }}</strong></span>
+            <span>Server: <strong id="live-clock">{{ now }}</strong></span>
+            <span>Polls: <strong>{{ stats.polls }}</strong></span>
+            <span>Last Poll: <strong>{{ stats.last_poll or 'Never' }}</strong></span>
+        </div>
     </div>
+
     <div class="container">
-        <!-- Stats Cards -->
+        <!-- Status Pills -->
+        <div class="status-bar">
+            <span class="pill ok"><span class="pulse-dot"></span> Service Running</span>
+            {% if stats.hana_errors > 0 %}
+            <span class="pill err">{{ stats.hana_errors }} HANA Error{{ 's' if stats.hana_errors != 1 }}</span>
+            {% endif %}
+            {% if stats.messages_failed > 0 %}
+            <span class="pill warn">{{ stats.messages_failed }} Send Failure{{ 's' if stats.messages_failed != 1 }}</span>
+            {% endif %}
+            {% if stats.webhook_errors > 0 %}
+            <span class="pill warn">{{ stats.webhook_errors }} Webhook Error{{ 's' if stats.webhook_errors != 1 }}</span>
+            {% endif %}
+            {% if stats.hana_errors == 0 and stats.messages_failed == 0 and stats.webhook_errors == 0 %}
+            <span class="pill ok">All Systems Normal</span>
+            {% endif %}
+        </div>
+
+        <!-- Stat Cards -->
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="label">Uptime</div>
-                <div class="value blue">{{ uptime }}</div>
-                <div class="detail">Started: {{ stats.start_time or 'N/A' }}</div>
-            </div>
-            <div class="stat-card">
+            <div class="stat-card glass c-green">
                 <div class="label">Messages Sent</div>
-                <div class="value green">{{ stats.messages_sent }}</div>
-                <div class="detail">Last: {{ stats.last_message_sent or 'Never' }}</div>
+                <div class="num green">{{ stats.messages_sent }}</div>
+                <div class="sub">Last: {{ stats.last_message_sent or 'Never' }}</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card glass c-green">
                 <div class="label">Approvals</div>
-                <div class="value green">{{ stats.approvals }}</div>
-                <div class="detail">Approved via WhatsApp</div>
+                <div class="num green">{{ stats.approvals }}</div>
+                <div class="sub">{{ approval_rate }}% of decisions</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card glass c-red">
                 <div class="label">Rejections</div>
-                <div class="value red">{{ stats.rejections }}</div>
-                <div class="detail">Rejected via WhatsApp</div>
+                <div class="num red">{{ stats.rejections }}</div>
+                <div class="sub">{{ rejection_rate }}% of decisions</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card glass c-amber">
+                <div class="label">Pending</div>
+                <div class="num amber">{{ pending_count }}</div>
+                <div class="sub">Awaiting response</div>
+            </div>
+            <div class="stat-card glass c-red">
                 <div class="label">Send Failures</div>
-                <div class="value yellow">{{ stats.messages_failed }}</div>
-                <div class="detail">Will retry on next poll</div>
+                <div class="num {% if stats.messages_failed > 0 %}red{% else %}gray{% endif %}">{{ stats.messages_failed }}</div>
+                <div class="sub">Retry on next poll</div>
             </div>
-            <div class="stat-card">
-                <div class="label">Poll Cycles</div>
-                <div class="value purple">{{ stats.polls }}</div>
-                <div class="detail">Last: {{ stats.last_poll or 'Never' }}</div>
-            </div>
-            <div class="stat-card">
+            <div class="stat-card glass c-blue">
                 <div class="label">Webhooks</div>
-                <div class="value blue">{{ stats.webhook_received }}</div>
-                <div class="detail">Errors: {{ stats.webhook_errors }}</div>
+                <div class="num blue">{{ stats.webhook_received }}</div>
+                <div class="sub">Errors: {{ stats.webhook_errors }} | Last: {{ stats.last_webhook or 'Never' }}</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card glass c-accent">
                 <div class="label">HANA Errors</div>
-                <div class="value red">{{ stats.hana_errors }}</div>
-                <div class="detail">Database operation errors</div>
+                <div class="num {% if stats.hana_errors > 0 %}red{% else %}gray{% endif %}">{{ stats.hana_errors }}</div>
+                <div class="sub">DB operation errors</div>
+            </div>
+            <div class="stat-card glass c-green">
+                <div class="label">Success Rate</div>
+                <div class="num {% if send_success_rate >= 95 %}green{% elif send_success_rate >= 80 %}amber{% else %}red{% endif %}">{{ send_success_rate }}%</div>
+                <div class="sub">{{ stats.messages_sent }} / {{ stats.messages_sent + stats.messages_failed }} messages</div>
+                <div class="progress-bar">
+                    <div class="progress-fill {% if send_success_rate >= 95 %}green{% elif send_success_rate >= 80 %}amber{% else %}red{% endif %}" style="width: {{ send_success_rate }}%"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Config & Recent Activity -->
-        <div class="two-col">
-            <div class="section">
-                <h2>Configuration</h2>
-                <div class="config-grid">
-                    <div class="config-item"><span class="key">HANA Host</span><span class="val">{{ config.hana_host }}</span></div>
-                    <div class="config-item"><span class="key">Schema</span><span class="val">{{ config.schema }}</span></div>
-                    <div class="config-item"><span class="key">Approver Phones</span><span class="val">{{ config.approver_phones }}</span></div>
-                    <div class="config-item"><span class="key">Confirmation Phones</span><span class="val">{{ config.confirmation_phones }}</span></div>
-                    <div class="config-item"><span class="key">Template</span><span class="val">{{ config.template }}</span></div>
-                    <div class="config-item"><span class="key">Confirm Template</span><span class="val">{{ config.confirm_template }}</span></div>
-                    <div class="config-item"><span class="key">WA Phone ID</span><span class="val">{{ config.wa_phone_id }}</span></div>
-                    <div class="config-item"><span class="key">Tracking Records</span><span class="val">{{ sent_records|length }}</span></div>
-                    <div class="config-item"><span class="key">Server Time</span><span class="val">{{ now }}</span></div>
+        <!-- 3-Column: Config + Tracking + Activity -->
+        <div class="grid-3">
+            <!-- Configuration -->
+            <div class="card glass">
+                <div class="card-head">Configuration</div>
+                <div class="card-body">
+                    <table class="cfg">
+                        <tr><td>HANA Host</td><td>{{ config.hana_host }}</td></tr>
+                        <tr><td>Schema</td><td>{{ config.schema }}</td></tr>
+                        <tr><td>Approver Phones</td><td>{{ config.approver_phones }}</td></tr>
+                        <tr><td>Confirm Phones</td><td>{{ config.confirmation_phones }}</td></tr>
+                        <tr><td>Approval Template</td><td>{{ config.template }}</td></tr>
+                        <tr><td>Confirm Template</td><td>{{ config.confirm_template }}</td></tr>
+                        <tr><td>Error Template</td><td>{{ config.error_template }}</td></tr>
+                        <tr><td>Items Template</td><td>{{ config.items_template }}</td></tr>
+                        <tr><td>WA Phone ID</td><td>{{ config.wa_phone_id }}</td></tr>
+                        <tr><td>Poll Interval</td><td>10 seconds</td></tr>
+                        <tr><td>Tracking Records</td><td>{{ sent_records|length }}</td></tr>
+                        <tr><td>Total Decisions</td><td>{{ stats.approvals + stats.rejections }}</td></tr>
+                    </table>
                 </div>
             </div>
-            <div class="section">
-                <h2>Recent Activity</h2>
-                <div style="max-height:300px;overflow-y:auto;">
+
+            <!-- Tracking Table -->
+            <div class="card glass">
+                <div class="card-head">
+                    Tracking Records
+                    <span class="cnt">{{ sent_records|length }} total</span>
+                </div>
+                <div class="scroll-area">
+                    <table>
+                        <thead><tr><th>WddCode</th><th>Sent At</th><th>Status</th></tr></thead>
+                        <tbody>
+                            {% for rec in sent_records %}
+                            <tr>
+                                <td><strong style="color:var(--text)">{{ rec.WddCode }}</strong></td>
+                                <td style="font-size:0.76rem;">{{ rec.SentAt }}</td>
+                                <td>
+                                    {% if rec.Status == 'APPROVE' %}
+                                        <span class="badge approve">{{ rec.Status }}</span>
+                                    {% elif rec.Status == 'REJECT' %}
+                                        <span class="badge reject">{{ rec.Status }}</span>
+                                    {% else %}
+                                        <span class="badge pending">{{ rec.Status or 'PENDING' }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:24px;">No records yet</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if sent_records %}
+                <div class="summary">
+                    <span>Approved: <strong style="color:var(--green)">{{ approved_count }}</strong></span>
+                    <span>Rejected: <strong style="color:var(--red)">{{ rejected_count }}</strong></span>
+                    <span>Pending: <strong style="color:var(--amber)">{{ pending_count }}</strong></span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card glass">
+                <div class="card-head">
+                    Recent Activity
+                    <span class="cnt">Last {{ stats.recent_activity|length }} events</span>
+                </div>
+                <div class="scroll-area">
                     <table>
                         <thead><tr><th>Time</th><th>Type</th><th>Detail</th></tr></thead>
                         <tbody>
                             {% for act in stats.recent_activity %}
                             <tr>
-                                <td>{{ act.time }}</td>
+                                <td style="white-space:nowrap;font-size:0.74rem;">{{ act.time }}</td>
                                 <td>
                                     {% if act.type == 'SENT' %}
                                         <span class="badge sent">{{ act.type }}</span>
                                     {% elif act.type == 'APPROVE' %}
-                                        <span class="badge approved">{{ act.type }}</span>
+                                        <span class="badge approve">{{ act.type }}</span>
                                     {% elif act.type == 'REJECT' %}
-                                        <span class="badge rejected">{{ act.type }}</span>
+                                        <span class="badge reject">{{ act.type }}</span>
                                     {% elif act.type in ['ERROR', 'FAILED'] %}
                                         <span class="badge error">{{ act.type }}</span>
                                     {% else %}
                                         <span class="badge info">{{ act.type }}</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ act.detail }}</td>
+                                <td><div class="detail-text">{{ act.detail }}</div></td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="3" style="text-align:center;color:#475569">No activity yet</td></tr>
+                            <tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:24px;">No activity yet</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -153,41 +569,12 @@
             </div>
         </div>
 
-        <!-- JIVO_WA_SENT Table -->
-        <div class="section">
-            <h2>JIVO_WA_SENT — Tracking Table ({{ sent_records|length }} records)</h2>
-            <div style="max-height:400px;overflow-y:auto;">
-                <table>
-                    <thead><tr><th>WddCode</th><th>Sent At</th><th>Status</th></tr></thead>
-                    <tbody>
-                        {% for rec in sent_records %}
-                        <tr>
-                            <td>{{ rec.WddCode }}</td>
-                            <td>{{ rec.SentAt }}</td>
-                            <td>
-                                {% if rec.Status == 'APPROVE' %}
-                                    <span class="badge approved">{{ rec.Status }}</span>
-                                {% elif rec.Status == 'REJECT' %}
-                                    <span class="badge rejected">{{ rec.Status }}</span>
-                                {% else %}
-                                    <span class="badge pending">{{ rec.Status or 'PENDING' }}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="3" style="text-align:center;color:#475569">No records</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         <!-- Log Viewer -->
-        <div class="section">
-            <h2>Log Viewer (last 100 lines)</h2>
+        <div class="card glass">
+            <div class="card-head">Log Viewer <span class="cnt">Last 100 lines per file</span></div>
             <div class="log-tabs">
                 {% for lf in log_files %}
-                <button class="log-tab {% if loop.first %}active{% endif %}" onclick="showLog('{{ lf }}')">{{ lf }}</button>
+                <button class="log-tab {% if loop.first %}active{% endif %}" onclick="showLog('{{ lf }}', this)">{{ lf }}</button>
                 {% endfor %}
             </div>
             {% for lf in log_files %}
@@ -195,16 +582,83 @@
             {% endfor %}
         </div>
 
-        <div class="refresh-note">Auto-refreshes every 30 seconds | <a href="/health" style="color:#3b82f6">API Health</a> | <a href="/test-wa" style="color:#3b82f6">Test WA</a></div>
+        <div class="footer">
+            Auto-refreshes every 30s &nbsp;&middot;&nbsp;
+            <a href="/health">Health API</a> &nbsp;&middot;&nbsp;
+            <a href="/test-wa">Test WhatsApp</a> &nbsp;&middot;&nbsp;
+            <a href="/test-items">Test Items</a>
+        </div>
     </div>
 
     <script>
-        function showLog(name) {
+        function showLog(name, btn) {
             document.querySelectorAll('.log-content').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.log-tab').forEach(el => el.classList.remove('active'));
             document.getElementById('log-' + name).style.display = 'block';
-            event.target.classList.add('active');
+            btn.classList.add('active');
         }
+
+        /* Animate numbers counting up on load */
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.stat-card .num').forEach(el => {
+                const text = el.textContent.trim();
+                const isPercent = text.endsWith('%');
+                const target = parseInt(text);
+                if (isNaN(target) || target === 0) return;
+                const duration = 800;
+                const start = performance.now();
+                el.textContent = isPercent ? '0%' : '0';
+                function tick(now) {
+                    const elapsed = now - start;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const current = Math.round(target * eased);
+                    el.textContent = isPercent ? current + '%' : current;
+                    if (progress < 1) requestAnimationFrame(tick);
+                }
+                requestAnimationFrame(tick);
+            });
+
+            /* Animate progress bar */
+            document.querySelectorAll('.progress-fill').forEach(el => {
+                const w = el.style.width;
+                el.style.width = '0%';
+                setTimeout(() => { el.style.width = w; }, 100);
+            });
+        });
+
+        /* Live uptime counter & server clock */
+        (function() {
+            const startTime = '{{ stats.start_time or '' }}';
+            if (!startTime) return;
+
+            const startDate = new Date(startTime.replace(' ', 'T'));
+            const uptimeEl = document.getElementById('live-uptime');
+            const clockEl = document.getElementById('live-clock');
+
+            function pad(n) { return String(n).padStart(2, '0'); }
+
+            function update() {
+                const now = new Date();
+
+                /* Uptime */
+                let diff = Math.floor((now - startDate) / 1000);
+                if (diff < 0) diff = 0;
+                const days = Math.floor(diff / 86400);
+                const hours = Math.floor((diff % 86400) / 3600);
+                const mins = Math.floor((diff % 3600) / 60);
+                const secs = diff % 60;
+                uptimeEl.textContent = days > 0
+                    ? days + 'd ' + hours + 'h ' + mins + 'm ' + secs + 's'
+                    : hours + 'h ' + mins + 'm ' + secs + 's';
+
+                /* Server clock */
+                clockEl.textContent = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+            }
+
+            update();
+            setInterval(update, 1000);
+        })();
     </script>
 </body>
 </html>
