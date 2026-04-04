@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jivo WA Approval — Dashboard</title>
+    <meta http-equiv="refresh" content="30">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #1e293b, #334155); padding: 20px 30px; border-bottom: 2px solid #3b82f6; }
+        .header h1 { font-size: 1.5rem; color: #60a5fa; }
+        .header .subtitle { color: #94a3b8; font-size: 0.85rem; margin-top: 4px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+        .stat-card .label { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; margin-top: 4px; }
+        .stat-card .value.green { color: #4ade80; }
+        .stat-card .value.blue { color: #60a5fa; }
+        .stat-card .value.red { color: #f87171; }
+        .stat-card .value.yellow { color: #fbbf24; }
+        .stat-card .value.purple { color: #c084fc; }
+        .stat-card .detail { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+
+        .section { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #334155; }
+        .section h2 { font-size: 1.1rem; color: #60a5fa; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px 12px; color: #94a3b8; font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; }
+        td { padding: 10px 12px; border-bottom: 1px solid #1e293b; font-size: 0.9rem; }
+        tr:hover { background: #334155; }
+
+        .badge { padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .badge.pending { background: #fbbf24; color: #1e293b; }
+        .badge.approved, .badge.sent { background: #4ade80; color: #1e293b; }
+        .badge.rejected, .badge.error { background: #f87171; color: #1e293b; }
+        .badge.info { background: #60a5fa; color: #1e293b; }
+
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+        .config-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #334155; }
+        .config-item .key { color: #94a3b8; }
+        .config-item .val { color: #e2e8f0; font-family: monospace; }
+
+        .log-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+        .log-tab { background: #334155; color: #94a3b8; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+        .log-tab.active { background: #3b82f6; color: white; }
+        .log-content { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px; max-height: 400px; overflow-y: auto; font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 0.78rem; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+        .refresh-note { text-align: center; color: #475569; font-size: 0.75rem; margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Jivo WA Approval Service</h1>
+        <div class="subtitle">WhatsApp SAP B1 Purchase Order Approval — Real-time Dashboard</div>
+    </div>
+    <div class="container">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Uptime</div>
+                <div class="value blue">{{ uptime }}</div>
+                <div class="detail">Started: {{ stats.start_time or 'N/A' }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Messages Sent</div>
+                <div class="value green">{{ stats.messages_sent }}</div>
+                <div class="detail">Last: {{ stats.last_message_sent or 'Never' }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Approvals</div>
+                <div class="value green">{{ stats.approvals }}</div>
+                <div class="detail">Approved via WhatsApp</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Rejections</div>
+                <div class="value red">{{ stats.rejections }}</div>
+                <div class="detail">Rejected via WhatsApp</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Send Failures</div>
+                <div class="value yellow">{{ stats.messages_failed }}</div>
+                <div class="detail">Will retry on next poll</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Poll Cycles</div>
+                <div class="value purple">{{ stats.polls }}</div>
+                <div class="detail">Last: {{ stats.last_poll or 'Never' }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Webhooks</div>
+                <div class="value blue">{{ stats.webhook_received }}</div>
+                <div class="detail">Errors: {{ stats.webhook_errors }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">HANA Errors</div>
+                <div class="value red">{{ stats.hana_errors }}</div>
+                <div class="detail">Database operation errors</div>
+            </div>
+        </div>
+
+        <!-- Config & Recent Activity -->
+        <div class="two-col">
+            <div class="section">
+                <h2>Configuration</h2>
+                <div class="config-grid">
+                    <div class="config-item"><span class="key">HANA Host</span><span class="val">{{ config.hana_host }}</span></div>
+                    <div class="config-item"><span class="key">Schema</span><span class="val">{{ config.schema }}</span></div>
+                    <div class="config-item"><span class="key">Approver Phones</span><span class="val">{{ config.approver_phones }}</span></div>
+                    <div class="config-item"><span class="key">Confirmation Phones</span><span class="val">{{ config.confirmation_phones }}</span></div>
+                    <div class="config-item"><span class="key">Template</span><span class="val">{{ config.template }}</span></div>
+                    <div class="config-item"><span class="key">Confirm Template</span><span class="val">{{ config.confirm_template }}</span></div>
+                    <div class="config-item"><span class="key">WA Phone ID</span><span class="val">{{ config.wa_phone_id }}</span></div>
+                    <div class="config-item"><span class="key">Tracking Records</span><span class="val">{{ sent_records|length }}</span></div>
+                    <div class="config-item"><span class="key">Server Time</span><span class="val">{{ now }}</span></div>
+                </div>
+            </div>
+            <div class="section">
+                <h2>Recent Activity</h2>
+                <div style="max-height:300px;overflow-y:auto;">
+                    <table>
+                        <thead><tr><th>Time</th><th>Type</th><th>Detail</th></tr></thead>
+                        <tbody>
+                            {% for act in stats.recent_activity %}
+                            <tr>
+                                <td>{{ act.time }}</td>
+                                <td>
+                                    {% if act.type == 'SENT' %}
+                                        <span class="badge sent">{{ act.type }}</span>
+                                    {% elif act.type == 'APPROVE' %}
+                                        <span class="badge approved">{{ act.type }}</span>
+                                    {% elif act.type == 'REJECT' %}
+                                        <span class="badge rejected">{{ act.type }}</span>
+                                    {% elif act.type in ['ERROR', 'FAILED'] %}
+                                        <span class="badge error">{{ act.type }}</span>
+                                    {% else %}
+                                        <span class="badge info">{{ act.type }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ act.detail }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" style="text-align:center;color:#475569">No activity yet</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- JIVO_WA_SENT Table -->
+        <div class="section">
+            <h2>JIVO_WA_SENT — Tracking Table ({{ sent_records|length }} records)</h2>
+            <div style="max-height:400px;overflow-y:auto;">
+                <table>
+                    <thead><tr><th>WddCode</th><th>Sent At</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for rec in sent_records %}
+                        <tr>
+                            <td>{{ rec.WddCode }}</td>
+                            <td>{{ rec.SentAt }}</td>
+                            <td>
+                                {% if rec.Status == 'APPROVE' %}
+                                    <span class="badge approved">{{ rec.Status }}</span>
+                                {% elif rec.Status == 'REJECT' %}
+                                    <span class="badge rejected">{{ rec.Status }}</span>
+                                {% else %}
+                                    <span class="badge pending">{{ rec.Status or 'PENDING' }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="text-align:center;color:#475569">No records</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Log Viewer -->
+        <div class="section">
+            <h2>Log Viewer (last 100 lines)</h2>
+            <div class="log-tabs">
+                {% for lf in log_files %}
+                <button class="log-tab {% if loop.first %}active{% endif %}" onclick="showLog('{{ lf }}')">{{ lf }}</button>
+                {% endfor %}
+            </div>
+            {% for lf in log_files %}
+            <pre class="log-content" id="log-{{ lf }}" style="display:{% if loop.first %}block{% else %}none{% endif %}">{{ log_data[lf] }}</pre>
+            {% endfor %}
+        </div>
+
+        <div class="refresh-note">Auto-refreshes every 30 seconds | <a href="/health" style="color:#3b82f6">API Health</a> | <a href="/test-wa" style="color:#3b82f6">Test WA</a></div>
+    </div>
+
+    <script>
+        function showLog(name) {
+            document.querySelectorAll('.log-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.log-tab').forEach(el => el.classList.remove('active'));
+            document.getElementById('log-' + name).style.display = 'block';
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

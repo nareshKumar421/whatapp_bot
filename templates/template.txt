@@ -1,0 +1,98 @@
+================================================================================
+TEMPLATE 1: PO APPROVAL REQUEST (with Items & Buttons)
+================================================================================
+Template Name : sap_approval_notification_v1
+Category      : UTILITY
+Language      : English (en)
+
+Body:
+------
+*Purchase Order Approval Request*
+
+*WDD Code:* {{wdd_code}}
+*Document Type:* {{doc_type}}
+*Vendor:* {{vendor}}
+*PO Number:* {{po_number}}
+*Total Amount:* {{amount}}
+*Raised By:* {{raised_by}}
+
+*Item Details:*
+{{items}}
+
+Please review and take action.
+
+Buttons:
+--------
+Button 1: Approve (quick_reply, payload: APPROVE_<WddCode>)
+Button 2: Reject  (quick_reply, payload: REJECT_<WddCode>)
+
+Parameters:
+-----------
+1. wdd_code          - WDD Code number
+2. doc_type          - Document type (e.g. Purchase Order)
+3. vendor            - Vendor / Business Partner name
+4. po_number         - PO Number
+5. amount            - Total amount
+6. raised_by         - Created by user name
+7. items             - Formatted item list with qty, stock, min stock, planned qty
+
+
+================================================================================
+TEMPLATE 2: PO APPROVAL CONFIRMATION
+================================================================================
+Template Name : po_approval_confirmation_v1_
+Category      : UTILITY
+Language      : English (en)
+
+Body:
+------
+*PO Action Confirmed*
+
+*WDD Code:* {{wdd_code}}
+*Document Type:* {{doc_type}}
+*Action:* {{action}}
+*Time:* {{time}}
+
+Your action has been successfully recorded in SAP.
+
+Buttons:
+--------
+None
+
+Parameters:
+-----------
+1. wdd_code          - WDD Code number
+2. doc_type          - Document type (e.g. Purchase Order)
+3. action            - APPROVED or REJECTED
+4. time              - Timestamp of the action
+
+
+================================================================================
+TEMPLATE 3: PO ALREADY PROCESSED (Error)
+================================================================================
+Template Name : po_already_processed_v1
+Category      : UTILITY
+Language      : English (en)
+
+Body:
+------
+*Action Failed*
+
+PO with WDD Code *{{wdd_code}}* has already been *{{current_status}}*.
+
+Your attempt to *{{attempted_action}}* this PO could not be processed.
+
+*Time:* {{time}}
+
+Please contact the admin if you need further assistance.
+
+Buttons:
+--------
+None
+
+Parameters:
+-----------
+1. wdd_code          - WDD Code number
+2. current_status    - Current status (APPROVED or REJECTED)
+3. attempted_action  - Action user tried (APPROVE or REJECT)
+4. time              - Timestamp of the attempt
