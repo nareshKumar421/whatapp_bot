@@ -7,7 +7,7 @@ from fastapi.responses import PlainTextResponse
 from app.config import VERIFY_TOKEN
 from app.db.queries import get_wdd_status, get_po_details, apply_approval_decision
 from app.logging_setup import log_webhook
-from app.stats import stats, add_activity
+from app.stats import increment_stat, set_stat, add_activity
 from app.whatsapp.constants import map_doc_type
 from app.whatsapp.sender import send_confirmation_message, send_error_message
 
@@ -32,8 +32,8 @@ async def verify_webhook(request: Request):
 @router.post("/webhook")
 async def receive_webhook(request: Request):
     body = await request.json()
-    stats["webhook_received"] += 1
-    stats["last_webhook"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    increment_stat("webhook_received")
+    set_stat("last_webhook", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     log_webhook.debug("Webhook payload: %s", json.dumps(body, default=str))
 
     try:
@@ -71,7 +71,12 @@ async def receive_webhook(request: Request):
             return {"status": "bad payload"}
 
         action = parts[0]
-        wdd_code = int(parts[1])
+        try:
+            wdd_code = int(parts[1])
+        except ValueError:
+            log_webhook.warning("Invalid WddCode format: %s", parts[1])
+            return {"status": "invalid wdd_code"}
+
         sender_phone = message["from"]
 
         log_webhook.info("ACTION=%s | WddCode=%s | From=%s", action, wdd_code, sender_phone)
@@ -124,20 +129,20 @@ async def receive_webhook(request: Request):
 
         if result["success"]:
             if action == "APPROVE":
-                stats["approvals"] += 1
+                increment_stat("approvals")
             else:
-                stats["rejections"] += 1
+                increment_stat("rejections")
             add_activity(action, f"WddCode={wdd_code} | {doc_type} | by {sender_phone}")
         else:
             add_activity("ERROR", f"WddCode={wdd_code} {action} failed: {result['message']}")
 
     except KeyError as e:
         log_webhook.error("Webhook parse error — missing key: %s", e)
-        stats["webhook_errors"] += 1
+        increment_stat("webhook_errors")
         add_activity("ERROR", f"Webhook parse error: missing key {e}")
     except Exception as e:
-        log_webhook.error("Webhook error: %s", e)
-        stats["webhook_errors"] += 1
+        log_webhook.error("Webhook error: %s", e, exc_info=True)
+        increment_stat("webhook_errors")
         add_activity("ERROR", f"Webhook error: {e}")
 
     return {"status": "ok"}

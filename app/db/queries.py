@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from app.db.connection import get_conn, t
+from app.db.connection import get_conn, release_conn, t
 from app.logging_setup import log_hana
-from app.stats import stats
+from app.stats import increment_stat
 
 
 def get_pending_approvals() -> list[dict]:
@@ -61,11 +61,11 @@ def get_pending_approvals() -> list[dict]:
         return results
     except Exception as e:
         log_hana.error("Error fetching pending approvals: %s", e)
-        stats["hana_errors"] += 1
+        increment_stat("hana_errors")
         raise
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)
 
 
 def get_po_details(wdd_code: int) -> Optional[dict]:
@@ -91,7 +91,7 @@ def get_po_details(wdd_code: int) -> Optional[dict]:
         }
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)
 
 
 def get_wdd_status(wdd_code: int) -> Optional[dict]:
@@ -117,13 +117,14 @@ def get_wdd_status(wdd_code: int) -> Optional[dict]:
         }
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)
 
 
 def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
                             source: str = "WhatsApp", approved_by: str = "") -> dict:
-    """action must be 'APPROVE' or 'REJECT'.
+    """Apply approval/rejection in a single transaction across all SAP tables.
 
+    action must be 'APPROVE' or 'REJECT'.
     source: 'WhatsApp' or 'Dashboard'
     approved_by: phone number or dashboard username
     """
@@ -151,6 +152,7 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
     conn = get_conn()
     cur = conn.cursor()
     try:
+        # All updates in a single transaction
         cur.execute(f"""
             UPDATE {t("OWDD")}
             SET "ProcesStat" = ?,
@@ -158,7 +160,6 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
                 "Remarks"    = ?
             WHERE "WddCode"  = ?
         """, (new_status, new_status, remark_text, wdd_code))
-        conn.commit()
         log_hana.info("Updated OWDD: WddCode=%s -> %s (via %s)", wdd_code, new_status, source)
 
         cur.execute(f"""
@@ -170,7 +171,6 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
             WHERE "WddCode"  = ?
               AND "Status"  IN ('P', 'W')
         """, (new_status, approval_date, approval_time, remark_text, wdd_code))
-        conn.commit()
         log_hana.info("Updated WDD1: WddCode=%s -> %s", wdd_code, new_status)
 
         if action == "APPROVE":
@@ -179,7 +179,6 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
                 SET "WddStatus" = 'A'
                 WHERE "DocEntry" = ?
             """, (draft_entry,))
-            conn.commit()
             log_hana.info("Updated ODRF: DocEntry=%s -> WddStatus=A", draft_entry)
 
         cur.execute(f"""
@@ -190,6 +189,8 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
                 "ActionAt"   = CURRENT_TIMESTAMP
             WHERE "WddCode"  = ?
         """, (action, approved_by, source, wdd_code))
+
+        # Single commit for all updates
         conn.commit()
 
         log_hana.info("WddCode=%s %sD successfully in SAP B1 (source=%s, by=%s)",
@@ -203,11 +204,11 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
     except Exception as e:
         try:
             conn.rollback()
-        except Exception:
-            pass
+        except Exception as rb_err:
+            log_hana.warning("Rollback failed for WddCode=%s: %s", wdd_code, rb_err)
         log_hana.error("DB error for WddCode=%s: %s", wdd_code, e)
-        stats["hana_errors"] += 1
+        increment_stat("hana_errors")
         return {"success": False, "message": f"DB error: {str(e)}"}
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)

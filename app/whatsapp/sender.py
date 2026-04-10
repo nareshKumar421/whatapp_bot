@@ -1,8 +1,8 @@
+import re
 from datetime import datetime
 
-import re
-
 import httpx
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from app.config import WA_TOKEN, WA_PHONE_ID, APPROVER_PHONES, CONFIRMATION_PHONES, TEMPLATE_NAME, CONFIRM_TMPL, ERROR_TMPL, ITEMS_TMPL
 from app.logging_setup import log_wa
@@ -25,7 +25,18 @@ def _sanitize_param(text: str) -> str:
     return text.strip()
 
 
-def _send_items_template(to_phone: str, wdd_code, po_number, items: list[dict]) -> bool:
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+    reraise=True,
+)
+def _post_whatsapp(payload: dict) -> httpx.Response:
+    """Send a WhatsApp API request with automatic retry on transient failures."""
+    return httpx.post(WA_API_URL, json=payload, headers=WA_HEADERS, timeout=10)
+
+
+def _send_items_template(to_phone: str, wdd_code: int, po_number: str, items: list[dict]) -> bool:
     """Send one template message per item (works without 24-hour window).
 
     Each item gets its own message so there is no character limit issue.
@@ -62,7 +73,7 @@ def _send_items_template(to_phone: str, wdd_code, po_number, items: list[dict]) 
             },
         }
         try:
-            resp = httpx.post(WA_API_URL, json=payload, headers=WA_HEADERS, timeout=10)
+            resp = _post_whatsapp(payload)
             if resp.status_code == 200:
                 log_wa.info("ITEM TMPL SENT WddCode=%s | Item %d/%d | To=%s", wdd_code, i, total, to_phone)
             else:
@@ -129,7 +140,7 @@ def send_whatsapp_approval(approval: dict) -> bool:
             },
         }
         try:
-            resp = httpx.post(WA_API_URL, json=payload, headers=WA_HEADERS, timeout=10)
+            resp = _post_whatsapp(payload)
             if resp.status_code == 200:
                 any_success = True
                 log_wa.info(
@@ -190,7 +201,7 @@ def send_confirmation_message(wdd_code: int, action: str,
             },
         }
         try:
-            resp = httpx.post(WA_API_URL, json=payload, headers=WA_HEADERS, timeout=10)
+            resp = _post_whatsapp(payload)
             if resp.status_code == 200:
                 log_wa.info("CONFIRMATION SENT WddCode=%s | %s | To=%s", wdd_code, status_text, phone)
             else:
@@ -204,11 +215,7 @@ def send_confirmation_message(wdd_code: int, action: str,
 
 def send_error_message(wdd_code: int, attempted_action: str,
                        current_status: str):
-    """Send error template to all CONFIRMATION_PHONES when user tries to act on an already-processed PO.
-
-    Example: user approved a PO, then taps Reject — this sends an error message
-    explaining the PO was already processed.
-    """
+    """Send error template to all CONFIRMATION_PHONES when user tries to act on an already-processed PO."""
     status_map = {"Y": "APPROVED", "N": "REJECTED"}
     current_status_text = status_map.get(current_status, current_status)
     attempted_text = "APPROVE" if attempted_action == "APPROVE" else "REJECT"
@@ -236,7 +243,7 @@ def send_error_message(wdd_code: int, attempted_action: str,
             },
         }
         try:
-            resp = httpx.post(WA_API_URL, json=payload, headers=WA_HEADERS, timeout=10)
+            resp = _post_whatsapp(payload)
             if resp.status_code == 200:
                 log_wa.info(
                     "ERROR MSG SENT WddCode=%s | Already %s, tried to %s | To=%s",

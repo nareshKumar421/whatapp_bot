@@ -23,3 +23,6 @@ CONFIRM_TMPL = os.getenv("WA_CONFIRM_TEMPLATE", "new_template")
 ERROR_TMPL = os.getenv("WA_ERROR_TEMPLATE", "po_already_processed_v1")
 ITEMS_TMPL = os.getenv("WA_ITEMS_TEMPLATE", "po_item_details")
 VERIFY_TOKEN = os.getenv("WA_VERIFY_TOKEN", "jivo_secure_123")
+
+# Polling
+POLL_INTERVAL_SECONDS = int(os.getenv("POLL_INTERVAL_SECONDS", "10"))

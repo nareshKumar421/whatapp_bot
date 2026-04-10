@@ -1,6 +1,6 @@
-from app.db.connection import get_conn, t
+from app.db.connection import get_conn, release_conn, t
 from app.logging_setup import log_hana
-from app.stats import stats
+from app.stats import increment_stat
 
 
 def create_tracking_table():
@@ -30,7 +30,7 @@ def create_tracking_table():
             log_hana.warning("Table create warning: %s", e)
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)
 
 
 def _add_column_if_missing(cur, conn, column: str, definition: str):
@@ -46,27 +46,12 @@ def _add_column_if_missing(cur, conn, column: str, definition: str):
             log_hana.warning("Could not add column %s: %s", column, e)
 
 
-def is_already_sent(wdd_code: int) -> bool:
-    """Check whether WddCode has already been sent."""
-    conn = get_conn()
-    cur = conn.cursor()
-    try:
-        cur.execute(
-            f'SELECT COUNT(*) FROM {t("JIVO_WA_SENT")} WHERE "WddCode" = ?',
-            (wdd_code,),
-        )
-        return cur.fetchone()[0] > 0
-    except Exception as e:
-        log_hana.error("Error checking sent status for WddCode=%s: %s", wdd_code, e)
-        stats["hana_errors"] += 1
-        return False
-    finally:
-        cur.close()
-        conn.close()
+def try_mark_as_sent(wdd_code: int) -> bool:
+    """Atomically insert WddCode into tracking table.
 
-
-def mark_as_sent(wdd_code: int):
-    """Record WddCode in HANA tracking table."""
+    Returns True if inserted (first time), False if already exists (duplicate).
+    Eliminates the race condition of separate check-then-insert.
+    """
     conn = get_conn()
     cur = conn.cursor()
     try:
@@ -76,15 +61,17 @@ def mark_as_sent(wdd_code: int):
         """, (wdd_code,))
         conn.commit()
         log_hana.info("Marked WddCode=%s as sent in JIVO_WA_SENT", wdd_code)
+        return True
     except Exception as e:
         if "unique" in str(e).lower() or "duplicate" in str(e).lower():
             log_hana.debug("WddCode=%s already in JIVO_WA_SENT (duplicate)", wdd_code)
-        else:
-            log_hana.error("Error marking WddCode=%s as sent: %s", wdd_code, e)
-            stats["hana_errors"] += 1
+            return False
+        log_hana.error("Error marking WddCode=%s as sent: %s", wdd_code, e)
+        increment_stat("hana_errors")
+        return False
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)
 
 
 def get_sent_count() -> int:
@@ -94,11 +81,12 @@ def get_sent_count() -> int:
     try:
         cur.execute(f'SELECT COUNT(*) FROM {t("JIVO_WA_SENT")}')
         return cur.fetchone()[0]
-    except Exception:
+    except Exception as e:
+        log_hana.error("Error fetching sent count: %s", e)
         return 0
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)
 
 
 def get_sent_records() -> list[dict]:
@@ -112,8 +100,9 @@ def get_sent_records() -> list[dict]:
         )
         cols = [col[0] for col in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
-    except Exception:
+    except Exception as e:
+        log_hana.error("Error fetching sent records: %s", e)
         return []
     finally:
         cur.close()
-        conn.close()
+        release_conn(conn)

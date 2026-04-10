@@ -12,7 +12,7 @@ from app.config import (
 from app.db.queries import get_pending_approvals
 from app.db.tracking import get_sent_records
 from app.logging_setup import LOG_DIR
-from app.stats import stats
+from app.stats import get_stats_snapshot
 
 router = APIRouter()
 
@@ -26,6 +26,7 @@ LOG_FILES = ["app.log", "error.log", "webhook.log", "whatsapp.log", "poll.log", 
 async def dashboard(request: Request):
     """Full dashboard showing all app stats, logs, and JIVO_WA_SENT records."""
     now = datetime.now()
+    stats = get_stats_snapshot()
 
     # Uptime
     uptime = ""

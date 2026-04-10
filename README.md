@@ -408,8 +408,8 @@ This action has been successfully recorded in SAP.
 | 4 | vendor     | Business Partner / Vendor name       | `"ABC Supplies"`              |
 | 5 | amount     | Formatted total amount (no decimals) | `"1,250"`                     |
 | 6 | raised_by  | Name of PO creator                   | `"John Doe"`                  |
-| 7 | action     | Action taken                         | `"APPROVED"` or `"REJECTED"` |
-| 8 | time       | Timestamp of action                  | `"24 Mar 2026, 10:30 AM"`    |
+| 7 | action     | Action taken                         | `"APPROVED"` or `"REJECTED"`  |
+| 8 | time       | Timestamp of action                  | `"24 Mar 2026, 10:30 AM"`     |
 
 ---
 
@@ -792,3 +792,25 @@ sudo journalctl -u whatsapp_bot -f      # Journal logs
 | 4 | Outgoing  | `po_approval_confirmation_v2`    | After successful approve/reject     | CONFIRMATION_PHONE  |
 | 5 | Outgoing  | `sap_already_processed_v2`       | When PO was already processed       | CONFIRMATION_PHONE  |
 | 6 | Incoming  | Webhook GET (verification)       | One-time during Meta webhook setup  | -                   |
+
+---
+
+## Remaining Improvements (TODO)
+
+The Medium and Low priority items below have been implemented. The following Critical and High items are still pending:
+
+### Critical
+
+| # | Issue | File |
+|---|-------|------|
+| 1.1 | Remove `.env` from git history, rotate credentials | `.env` |
+| 1.2 | Validate `X-Hub-Signature-256` on incoming webhooks | `app/routes/webhook.py` |
+
+### High
+
+| # | Issue | File |
+|---|-------|------|
+| 2.1 | Wrap blocking HANA calls with `asyncio.to_thread()` | `app/routes/webhook.py`, `api.py`, `dashboard.py` |
+| 2.3 | Require `WA_VERIFY_TOKEN` via env (no weak default) | `app/config.py` |
+| 2.4 | Add CORS middleware with explicit allowed origins | `main.py` |
+| 2.5 | Add authentication to dashboard or hide sensitive config | `app/routes/dashboard.py` |

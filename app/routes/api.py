@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.db.queries import get_pending_approvals, get_wdd_status, get_po_details, apply_approval_decision
 from app.logging_setup import logger
-from app.stats import stats, add_activity
+from app.stats import increment_stat, add_activity
 from app.whatsapp.constants import map_doc_type
 from app.whatsapp.sender import send_confirmation_message
 
@@ -19,7 +19,8 @@ async def api_pending():
         approvals = get_pending_approvals()
         return {"status": "ok", "data": approvals}
     except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+        logger.error("Error fetching pending approvals: %s", e, exc_info=True)
+        return JSONResponse({"status": "error", "message": "Internal server error"}, status_code=500)
 
 
 @router.post("/decide")
@@ -39,7 +40,13 @@ async def api_decide(request: Request):
             status_code=400,
         )
 
-    wdd_code = int(wdd_code)
+    try:
+        wdd_code = int(wdd_code)
+    except (ValueError, TypeError):
+        return JSONResponse(
+            {"success": False, "message": "wdd_code must be a valid integer."},
+            status_code=400,
+        )
 
     # Check current status
     wdd_info = get_wdd_status(wdd_code)
@@ -72,9 +79,9 @@ async def api_decide(request: Request):
 
     if result["success"]:
         if action == "APPROVE":
-            stats["approvals"] += 1
+            increment_stat("approvals")
         else:
-            stats["rejections"] += 1
+            increment_stat("rejections")
         add_activity(action, f"WddCode={wdd_code} | {doc_type} | via Dashboard by {user}")
 
         # Send WhatsApp notification to confirmation phones
