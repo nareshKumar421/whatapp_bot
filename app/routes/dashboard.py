@@ -9,6 +9,7 @@ from app.config import (
     HANA_HOST, HANA_PORT, HANA_SCHEMA,
     APPROVER_PHONES, CONFIRMATION_PHONES, TEMPLATE_NAME, CONFIRM_TMPL, ERROR_TMPL, ITEMS_TMPL, WA_PHONE_ID,
 )
+from app.db.queries import get_pending_approvals
 from app.db.tracking import get_sent_records
 from app.logging_setup import LOG_DIR
 from app.stats import stats
@@ -35,12 +36,21 @@ async def dashboard(request: Request):
         days, hours = divmod(hours, 24)
         uptime = f"{days}d {hours}h {minutes}m" if days > 0 else f"{hours}h {minutes}m {seconds}s"
 
+    # Pending POs from view
+    try:
+        pending_approvals = get_pending_approvals()
+    except Exception:
+        pending_approvals = []
+
     # Sent records from HANA
     sent_records = get_sent_records()
     for rec in sent_records:
-        sent_at = rec.get("SentAt", "")
-        if hasattr(sent_at, "strftime"):
-            rec["SentAt"] = sent_at.strftime("%Y-%m-%d %H:%M:%S")
+        for ts_field in ("SentAt", "ActionAt"):
+            val = rec.get(ts_field, "")
+            if hasattr(val, "strftime"):
+                rec[ts_field] = val.strftime("%Y-%m-%d %H:%M:%S")
+            elif not val:
+                rec[ts_field] = ""
 
     # Computed metrics
     approved_count = sum(1 for r in sent_records if r.get("Status") == "APPROVE")
@@ -78,6 +88,7 @@ async def dashboard(request: Request):
         "approval_rate": approval_rate,
         "rejection_rate": rejection_rate,
         "send_success_rate": send_success_rate,
+        "pending_approvals": pending_approvals,
         "config": {
             "hana_host": f"{HANA_HOST}:{HANA_PORT}",
             "schema": HANA_SCHEMA,

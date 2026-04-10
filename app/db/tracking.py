@@ -4,27 +4,46 @@ from app.stats import stats
 
 
 def create_tracking_table():
-    """Create JIVO_WA_SENT table if it does not exist."""
+    """Create JIVO_WA_SENT table if it does not exist, and ensure new columns exist."""
     conn = get_conn()
     cur = conn.cursor()
     try:
         cur.execute(f"""
             CREATE TABLE {t("JIVO_WA_SENT")} (
-                "WddCode"   INTEGER      NOT NULL PRIMARY KEY,
-                "SentAt"    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-                "Status"    NVARCHAR(20) DEFAULT 'PENDING'
+                "WddCode"    INTEGER      NOT NULL PRIMARY KEY,
+                "SentAt"     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+                "Status"     NVARCHAR(20) DEFAULT 'PENDING',
+                "ApprovedBy" NVARCHAR(100) DEFAULT '',
+                "Source"     NVARCHAR(20)  DEFAULT '',
+                "ActionAt"   TIMESTAMP     NULL
             )
         """)
         conn.commit()
-        log_hana.info("Created JIVO_WA_SENT tracking table")
+        log_hana.info("Created JIVO_WA_SENT tracking table with extended columns")
     except Exception as e:
         if "already exists" in str(e).lower() or "duplicate table name" in str(e).lower():
-            log_hana.info("JIVO_WA_SENT table already exists")
+            log_hana.info("JIVO_WA_SENT table already exists — checking for new columns")
+            _add_column_if_missing(cur, conn, "ApprovedBy", 'NVARCHAR(100) DEFAULT \'\'')
+            _add_column_if_missing(cur, conn, "Source", 'NVARCHAR(20) DEFAULT \'\'')
+            _add_column_if_missing(cur, conn, "ActionAt", "TIMESTAMP NULL")
         else:
             log_hana.warning("Table create warning: %s", e)
     finally:
         cur.close()
         conn.close()
+
+
+def _add_column_if_missing(cur, conn, column: str, definition: str):
+    """Try to add a column; ignore if it already exists."""
+    try:
+        cur.execute(f'ALTER TABLE {t("JIVO_WA_SENT")} ADD ("{column}" {definition})')
+        conn.commit()
+        log_hana.info("Added column %s to JIVO_WA_SENT", column)
+    except Exception as e:
+        if "duplicate" in str(e).lower() or "already exists" in str(e).lower():
+            log_hana.debug("Column %s already exists", column)
+        else:
+            log_hana.warning("Could not add column %s: %s", column, e)
 
 
 def is_already_sent(wdd_code: int) -> bool:
@@ -88,7 +107,8 @@ def get_sent_records() -> list[dict]:
     cur = conn.cursor()
     try:
         cur.execute(
-            f'SELECT "WddCode", "SentAt", "Status" FROM {t("JIVO_WA_SENT")} ORDER BY "SentAt" DESC'
+            f'SELECT "WddCode", "SentAt", "Status", "ApprovedBy", "Source", "ActionAt" '
+            f'FROM {t("JIVO_WA_SENT")} ORDER BY "SentAt" DESC'
         )
         cols = [col[0] for col in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]

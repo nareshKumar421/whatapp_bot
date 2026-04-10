@@ -85,6 +85,7 @@
             transform: translateY(-4px);
             box-shadow: var(--card-shadow-hover);
         }
+        .glass.no-lift:hover { transform: none; }
 
         /* Header */
         .header {
@@ -204,7 +205,7 @@
         .num.accent { color: var(--accent); }
         .num.gray { color: #b0b4c8; }
 
-        /* Stagger animation for cards */
+        /* Stagger animation */
         @keyframes fadeSlideIn {
             from { opacity: 0; transform: translateY(16px); }
             to { opacity: 1; transform: translateY(0); }
@@ -219,8 +220,10 @@
         .stat-card:nth-child(8) { animation: fadeSlideIn 0.45s ease 0.4s both; }
 
         /* Grid layouts */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
         .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 22px; }
         @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
 
         /* Card sections */
         .card { overflow: hidden; }
@@ -276,6 +279,8 @@
         .badge.sent { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
         .badge.error { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
         .badge.info { background: var(--accent-light); color: var(--accent); border: 1px solid #c7d2fe; }
+        .badge.wa { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+        .badge.dash { background: var(--accent-light); color: #4338ca; border: 1px solid #a5b4fc; }
 
         /* Config table */
         .cfg td { padding: 6px 0; font-size: 0.8rem; border-bottom: 1px solid rgba(0,0,0,0.04); }
@@ -304,6 +309,109 @@
         /* Detail text */
         .detail-text { max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .detail-text:hover { white-space: normal; word-break: break-word; }
+
+        /* Action buttons */
+        .btn {
+            padding: 5px 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-approve {
+            background: var(--green);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(22,163,74,0.25);
+        }
+        .btn-approve:hover:not(:disabled) {
+            background: #15803d;
+            box-shadow: 0 4px 14px rgba(22,163,74,0.35);
+            transform: translateY(-1px);
+        }
+        .btn-reject {
+            background: var(--red);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(220,38,38,0.25);
+        }
+        .btn-reject:hover:not(:disabled) {
+            background: #b91c1c;
+            box-shadow: 0 4px 14px rgba(220,38,38,0.35);
+            transform: translateY(-1px);
+        }
+        .btn-sm { padding: 4px 10px; font-size: 0.68rem; }
+
+        /* Items expand */
+        .items-toggle {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 0;
+        }
+        .items-toggle:hover { text-decoration: underline; }
+        .items-list {
+            display: none;
+            padding: 8px 0 4px 0;
+            font-size: 0.76rem;
+        }
+        .items-list.show { display: block; }
+        .items-list table { font-size: 0.74rem; }
+        .items-list th { font-size: 0.64rem; padding: 4px 6px; }
+        .items-list td { padding: 4px 6px; font-size: 0.74rem; }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 14px 22px;
+            border-radius: 12px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            z-index: 9999;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        }
+        .toast.show { transform: translateX(0); }
+        .toast.success { background: #fff; color: var(--green); border: 1px solid var(--green-border); }
+        .toast.fail { background: #fff; color: var(--red); border: 1px solid var(--red-border); }
+
+        /* User name input in header */
+        .user-input {
+            background: rgba(0,0,0,0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.76rem;
+            color: var(--text);
+            width: 130px;
+            font-family: inherit;
+        }
+        .user-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+
+        /* Pending approvals card - highlight */
+        .pending-card {
+            border: 1px solid var(--amber-border);
+            background: rgba(255,255,255,0.9);
+        }
+        .pending-card .card-head {
+            background: var(--amber-bg);
+            border-bottom-color: var(--amber-border);
+        }
 
         /* Log viewer */
         .log-tabs {
@@ -386,9 +494,23 @@
             .header { flex-direction: column; align-items: flex-start; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
+
+        /* Spin animation for loading */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
     </style>
 </head>
 <body>
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
     <!-- Header -->
     <div class="header">
         <div class="header-left">
@@ -402,6 +524,7 @@
             <span>Server: <strong id="live-clock">{{ now }}</strong></span>
             <span>Polls: <strong>{{ stats.polls }}</strong></span>
             <span>Last Poll: <strong>{{ stats.last_poll or 'Never' }}</strong></span>
+            <span>User: <input type="text" class="user-input" id="dashboard-user" placeholder="Your name" value="Admin"></span>
         </div>
     </div>
 
@@ -470,6 +593,71 @@
             </div>
         </div>
 
+        <!-- PENDING APPROVALS — Full Width -->
+        <div class="card glass no-lift pending-card" style="margin-bottom:22px;">
+            <div class="card-head">
+                Pending Approvals — Approve / Reject from Dashboard
+                <span class="cnt">{{ pending_approvals|length }} pending PO{{ 's' if pending_approvals|length != 1 }}</span>
+            </div>
+            <div class="scroll-area" style="max-height:450px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>WddCode</th>
+                            <th>PO Number</th>
+                            <th>Vendor</th>
+                            <th>Amount</th>
+                            <th>Raised By</th>
+                            <th>Approver</th>
+                            <th>Items</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for po in pending_approvals %}
+                        <tr id="po-row-{{ po.WddCode }}">
+                            <td><strong style="color:var(--text)">{{ po.WddCode }}</strong></td>
+                            <td>{{ po.PONumber or 'N/A' }}</td>
+                            <td>{{ po.BPName or 'N/A' }}</td>
+                            <td style="font-weight:600;">{{ "%.2f"|format(po.TotalAmount|float) }}</td>
+                            <td>{{ po.CreatedBy or 'N/A' }}</td>
+                            <td>{{ po.ApproverName or 'N/A' }}</td>
+                            <td>
+                                <button class="items-toggle" onclick="toggleItems({{ po.WddCode }})">
+                                    {{ po["items"]|length }} item{{ 's' if po["items"]|length != 1 }}
+                                </button>
+                                <div class="items-list" id="items-{{ po.WddCode }}">
+                                    <table>
+                                        <thead>
+                                            <tr><th>Code</th><th>Name</th><th>Qty</th><th>Stock</th><th>Min</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in po["items"] %}
+                                            <tr>
+                                                <td>{{ item.ItemCode }}</td>
+                                                <td>{{ item.ItemName }}</td>
+                                                <td>{{ item.POQuantity }}</td>
+                                                <td>{{ item.CurrentStock }}</td>
+                                                <td>{{ item.MinimumStock }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                            <td style="white-space:nowrap;">
+                                <button class="btn btn-approve btn-sm" onclick="decide({{ po.WddCode }}, 'APPROVE', this)">Approve</button>
+                                <button class="btn btn-reject btn-sm" onclick="decide({{ po.WddCode }}, 'REJECT', this)" style="margin-left:4px;">Reject</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:28px;">No pending approvals</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- 3-Column: Config + Tracking + Activity -->
         <div class="grid-3">
             <!-- Configuration -->
@@ -493,7 +681,7 @@
                 </div>
             </div>
 
-            <!-- Tracking Table -->
+            <!-- Tracking Table (with source & approved by) -->
             <div class="card glass">
                 <div class="card-head">
                     Tracking Records
@@ -501,24 +689,34 @@
                 </div>
                 <div class="scroll-area">
                     <table>
-                        <thead><tr><th>WddCode</th><th>Sent At</th><th>Status</th></tr></thead>
+                        <thead><tr><th>WddCode</th><th>Status</th><th>By</th><th>Source</th><th>Action At</th></tr></thead>
                         <tbody>
                             {% for rec in sent_records %}
                             <tr>
                                 <td><strong style="color:var(--text)">{{ rec.WddCode }}</strong></td>
-                                <td style="font-size:0.76rem;">{{ rec.SentAt }}</td>
                                 <td>
                                     {% if rec.Status == 'APPROVE' %}
-                                        <span class="badge approve">{{ rec.Status }}</span>
+                                        <span class="badge approve">Approved</span>
                                     {% elif rec.Status == 'REJECT' %}
-                                        <span class="badge reject">{{ rec.Status }}</span>
+                                        <span class="badge reject">Rejected</span>
                                     {% else %}
                                         <span class="badge pending">{{ rec.Status or 'PENDING' }}</span>
                                     {% endif %}
                                 </td>
+                                <td style="font-size:0.74rem;">{{ rec.ApprovedBy or '—' }}</td>
+                                <td>
+                                    {% if rec.Source == 'WhatsApp' %}
+                                        <span class="badge wa">WhatsApp</span>
+                                    {% elif rec.Source == 'Dashboard' %}
+                                        <span class="badge dash">Dashboard</span>
+                                    {% else %}
+                                        <span style="color:var(--text-dim);font-size:0.72rem;">{{ rec.Source or '—' }}</span>
+                                    {% endif %}
+                                </td>
+                                <td style="font-size:0.72rem;">{{ rec.ActionAt or '—' }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:24px;">No records yet</td></tr>
+                            <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:24px;">No records yet</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -591,11 +789,65 @@
     </div>
 
     <script>
+        /* Log tab switching */
         function showLog(name, btn) {
             document.querySelectorAll('.log-content').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.log-tab').forEach(el => el.classList.remove('active'));
             document.getElementById('log-' + name).style.display = 'block';
             btn.classList.add('active');
+        }
+
+        /* Toggle items list */
+        function toggleItems(wddCode) {
+            const el = document.getElementById('items-' + wddCode);
+            el.classList.toggle('show');
+        }
+
+        /* Toast notification */
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => { toast.classList.remove('show'); }, 4000);
+        }
+
+        /* Dashboard approve/reject */
+        async function decide(wddCode, action, btn) {
+            const user = document.getElementById('dashboard-user').value.trim() || 'Dashboard User';
+            const row = document.getElementById('po-row-' + wddCode);
+            const buttons = row.querySelectorAll('.btn');
+
+            /* Disable buttons and show spinner */
+            buttons.forEach(b => { b.disabled = true; });
+            btn.innerHTML = '<span class="spinner"></span> ' + (action === 'APPROVE' ? 'Approving...' : 'Rejecting...');
+
+            try {
+                const resp = await fetch('/api/decide', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wdd_code: wddCode, action: action, user: user }),
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    showToast('WddCode ' + wddCode + ' ' + action + 'D successfully! WA notification sent.', 'success');
+                    /* Fade out the row */
+                    row.style.transition = 'opacity 0.5s, background 0.5s';
+                    row.style.opacity = '0.3';
+                    row.style.background = action === 'APPROVE' ? 'var(--green-bg)' : 'var(--red-bg)';
+                    /* Replace buttons with status */
+                    const actionsCell = row.querySelector('td:last-child');
+                    actionsCell.innerHTML = '<span class="badge ' + (action === 'APPROVE' ? 'approve' : 'reject') + '">' + action + 'D</span>';
+                } else {
+                    showToast('Failed: ' + data.message, 'fail');
+                    buttons.forEach(b => { b.disabled = false; });
+                    btn.textContent = action === 'APPROVE' ? 'Approve' : 'Reject';
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'fail');
+                buttons.forEach(b => { b.disabled = false; });
+                btn.textContent = action === 'APPROVE' ? 'Approve' : 'Reject';
+            }
         }
 
         /* Animate numbers counting up on load */
@@ -625,11 +877,18 @@
                 el.style.width = '0%';
                 setTimeout(() => { el.style.width = w; }, 100);
             });
+
+            /* Persist user name */
+            const savedUser = localStorage.getItem('dashboard_user');
+            if (savedUser) document.getElementById('dashboard-user').value = savedUser;
+            document.getElementById('dashboard-user').addEventListener('change', function() {
+                localStorage.setItem('dashboard_user', this.value);
+            });
         });
 
         /* Live uptime counter & server clock */
         (function() {
-            const startTime = '{{ stats.start_time or '' }}';
+            const startTime = '{{ stats.start_time or "" }}';
             if (!startTime) return;
 
             const startDate = new Date(startTime.replace(' ', 'T'));

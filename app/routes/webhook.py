@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import PlainTextResponse
 
 from app.config import VERIFY_TOKEN
-from app.db.queries import get_wdd_status, apply_approval_decision
+from app.db.queries import get_wdd_status, get_po_details, apply_approval_decision
 from app.logging_setup import log_webhook
 from app.stats import stats, add_activity
 from app.whatsapp.constants import map_doc_type
@@ -104,15 +104,22 @@ async def receive_webhook(request: Request):
                 f"via WhatsApp by {sender_phone} "
                 f"at {datetime.now().strftime('%d-%m-%Y %H:%M')}"
             ),
+            source="WhatsApp",
+            approved_by=sender_phone,
         )
 
         log_webhook.info("SAP result for WddCode=%s: %s", wdd_code, result)
 
+        po_details = get_po_details(wdd_code) or {}
         send_confirmation_message(
             wdd_code=wdd_code,
             action=action,
             doc_type=doc_type,
             success=result["success"],
+            po_number=str(po_details.get("PONumber", "N/A")),
+            vendor=po_details.get("BPName", "N/A"),
+            amount=f"{po_details.get('TotalAmount', 0):,.0f}",
+            raised_by=po_details.get("CreatedBy", "N/A"),
         )
 
         if result["success"]:

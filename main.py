@@ -19,7 +19,7 @@ from app.config import HANA_HOST, HANA_PORT, HANA_SCHEMA, TEMPLATE_NAME, APPROVE
 from app.db.tracking import create_tracking_table
 from app.logging_setup import logger
 from app.poller import poll_and_send
-from app.routes import dashboard, health, test, webhook
+from app.routes import api, dashboard, health, test, webhook
 from app.stats import stats
 
 app = FastAPI(title="Jivo WA Approval", version="2.0.0")
@@ -30,6 +30,7 @@ app.include_router(webhook.router)
 app.include_router(health.router)
 app.include_router(test.router)
 app.include_router(dashboard.router)
+app.include_router(api.router)
 
 
 @app.on_event("startup")

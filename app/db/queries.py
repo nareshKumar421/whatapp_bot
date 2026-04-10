@@ -68,6 +68,32 @@ def get_pending_approvals() -> list[dict]:
         conn.close()
 
 
+def get_po_details(wdd_code: int) -> Optional[dict]:
+    """Returns PO header details (BPName, PONumber, TotalAmount, CreatedBy) for a given WddCode."""
+    conn = get_conn()
+    cur = conn.cursor()
+    try:
+        cur.execute(f"""
+            SELECT "BPName", "PONumber", "TotalAmount", "CreatedBy"
+            FROM   {t("view_whatsapp_bot")}
+            WHERE  "WddCode" = ?
+            FETCH FIRST 1 ROWS ONLY
+        """, (wdd_code,))
+        row = cur.fetchone()
+        if not row:
+            log_hana.warning("WddCode=%s not found in view_whatsapp_bot", wdd_code)
+            return None
+        return {
+            "BPName": row[0] or "N/A",
+            "PONumber": row[1] or "N/A",
+            "TotalAmount": row[2] or 0,
+            "CreatedBy": row[3] or "N/A",
+        }
+    finally:
+        cur.close()
+        conn.close()
+
+
 def get_wdd_status(wdd_code: int) -> Optional[dict]:
     """Returns OWDD row for given WddCode, or None if not found."""
     conn = get_conn()
@@ -94,8 +120,13 @@ def get_wdd_status(wdd_code: int) -> Optional[dict]:
         conn.close()
 
 
-def apply_approval_decision(wdd_code: int, action: str, remarks: str = "") -> dict:
-    """action must be 'APPROVE' or 'REJECT'."""
+def apply_approval_decision(wdd_code: int, action: str, remarks: str = "",
+                            source: str = "WhatsApp", approved_by: str = "") -> dict:
+    """action must be 'APPROVE' or 'REJECT'.
+
+    source: 'WhatsApp' or 'Dashboard'
+    approved_by: phone number or dashboard username
+    """
     wdd = get_wdd_status(wdd_code)
 
     if wdd is None:
@@ -111,7 +142,7 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "") -> di
 
     new_status = "Y" if action == "APPROVE" else "N"
     remark_text = remarks if remarks else (
-        "Approved via WhatsApp." if action == "APPROVE" else "Rejected via WhatsApp."
+        f"{'Approved' if action == 'APPROVE' else 'Rejected'} via {source}."
     )
     approval_date = datetime.now().strftime("%Y-%m-%d")
     approval_time = int(datetime.now().strftime("%H%M"))
@@ -128,7 +159,7 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "") -> di
             WHERE "WddCode"  = ?
         """, (new_status, new_status, remark_text, wdd_code))
         conn.commit()
-        log_hana.info("Updated OWDD: WddCode=%s -> %s", wdd_code, new_status)
+        log_hana.info("Updated OWDD: WddCode=%s -> %s (via %s)", wdd_code, new_status, source)
 
         cur.execute(f"""
             UPDATE {t("WDD1")}
@@ -153,15 +184,20 @@ def apply_approval_decision(wdd_code: int, action: str, remarks: str = "") -> di
 
         cur.execute(f"""
             UPDATE {t("JIVO_WA_SENT")}
-            SET "Status" = ?
-            WHERE "WddCode" = ?
-        """, (action, wdd_code))
+            SET "Status"     = ?,
+                "ApprovedBy" = ?,
+                "Source"     = ?,
+                "ActionAt"   = CURRENT_TIMESTAMP
+            WHERE "WddCode"  = ?
+        """, (action, approved_by, source, wdd_code))
         conn.commit()
 
-        log_hana.info("WddCode=%s %sD successfully in SAP B1", wdd_code, action)
+        log_hana.info("WddCode=%s %sD successfully in SAP B1 (source=%s, by=%s)",
+                      wdd_code, action, source, approved_by)
         return {
             "success": True,
             "message": f"WddCode={wdd_code} {action}D successfully.",
+            "doc_type": wdd.get("ObjType", "22"),
         }
 
     except Exception as e:

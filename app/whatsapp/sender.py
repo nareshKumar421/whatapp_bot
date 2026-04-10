@@ -153,7 +153,9 @@ def send_whatsapp_approval(approval: dict) -> bool:
 
 
 def send_confirmation_message(wdd_code: int, action: str,
-                              doc_type: str, success: bool):
+                              doc_type: str, success: bool,
+                              po_number: str = "N/A", vendor: str = "N/A",
+                              amount: str = "0", raised_by: str = "N/A"):
     """Send confirmation template to all CONFIRMATION_PHONES after approval/rejection."""
     if not success:
         log_wa.warning("Skipping confirmation for WddCode=%s — SAP update failed", wdd_code)
@@ -175,7 +177,11 @@ def send_confirmation_message(wdd_code: int, action: str,
                         "type": "body",
                         "parameters": [
                             {"type": "text", "parameter_name": "wdd_code", "text": str(wdd_code)},
-                            {"type": "text", "parameter_name": "doc_type", "text": doc_type},
+                            {"type": "text", "parameter_name": "po_number", "text": _sanitize_param(str(po_number))},
+                            {"type": "text", "parameter_name": "doc_type", "text": _sanitize_param(doc_type)},
+                            {"type": "text", "parameter_name": "vendor", "text": _sanitize_param(vendor)},
+                            {"type": "text", "parameter_name": "amount", "text": _sanitize_param(str(amount))},
+                            {"type": "text", "parameter_name": "raised_by", "text": _sanitize_param(raised_by)},
                             {"type": "text", "parameter_name": "action", "text": status_text},
                             {"type": "text", "parameter_name": "time", "text": time_str},
                         ],
