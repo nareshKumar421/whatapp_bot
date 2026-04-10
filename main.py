@@ -3,7 +3,7 @@
 # FastAPI + APScheduler + SAP HANA (hdbcli) + Meta Cloud API
 #
 # Flow:
-#   1. Poll HANA every 60s for OWDD rows with ProcesStat='W', ObjType='22'
+#   1. Poll HANA every 10s for OWDD rows with ProcesStat='W', ObjType='22'
 #   2. Send WhatsApp template message with Approve / Reject quick-reply buttons
 #   3. Receive button tap via Meta webhook POST /webhook
 #   4. Update OWDD, WDD1, ODRF in SAP HANA

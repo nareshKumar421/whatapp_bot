@@ -36,7 +36,8 @@ whatapp_bot/
 ├── main.py                  # FastAPI app entry point, scheduler setup
 ├── requirements.txt         # Python dependencies
 ├── .env                     # Environment variables (not in git)
-├── service                  # systemd unit file
+├── test_hana.py             # Test SAP HANA connectivity
+├── test_send.py             # Test WhatsApp template sending
 ├── templates/
 │   └── dashboard.html       # Web dashboard template
 ├── logs/                    # Rotating log files (auto-created)
@@ -56,7 +57,8 @@ whatapp_bot/
 │       ├── webhook.py       # Meta webhook (verify + receive buttons)
 │       ├── health.py        # GET /health endpoint
 │       ├── test.py          # GET /test-wa, GET /test-items
-│       └── dashboard.py     # GET / — web dashboard
+│       ├── dashboard.py     # GET / — web dashboard
+│       └── api.py           # GET /api/pending, POST /api/decide
 ```
 
 ---
@@ -130,7 +132,7 @@ uvicorn main:app --host 127.0.0.1 --port 5005 --workers 1 --log-level info
 | `CONFIRMATION_PHONE`   | Yes      | -                          | Comma-separated confirmation phone numbers     |
 | `WA_VERIFY_TOKEN`      | No       | `jivo_secure_123`          | Webhook verification token                     |
 | `WA_TEMPLATE_NAME`     | No       | `po_approval_request`      | Approval request template name                 |
-| `WA_CONFIRM_TEMPLATE`  | No       | `po_approval_confirmation` | Confirmation template name                     |
+| `WA_CONFIRM_TEMPLATE`  | No       | `new_template`             | Confirmation template name                     |
 | `WA_ERROR_TEMPLATE`    | No       | `po_already_processed_v1`  | Error template name                            |
 | `WA_ITEMS_TEMPLATE`    | No       | `po_item_details`          | Item details template name                     |
 
@@ -193,6 +195,8 @@ Dashboard shows both phone lists
 | GET    | `/health`     | JSON health check with config summary              |
 | GET    | `/test-wa`    | Send test approval to all approver phones          |
 | GET    | `/test-items` | Send test item detail to first approver            |
+| GET    | `/api/pending`| Return pending POs as JSON for dashboard           |
+| POST   | `/api/decide` | Approve/reject a PO from the dashboard             |
 | GET    | `/webhook`    | Meta webhook verification handshake                |
 | POST   | `/webhook`    | Receive WhatsApp button tap callbacks              |
 
@@ -206,6 +210,45 @@ Dashboard shows both phone lists
   "hana_schema": "YOUR_SCHEMA",
   "approver_phones": ["919876543210", "919876543211"],
   "template": "sap_approval_notification_v2"
+}
+```
+
+### GET /api/pending Response
+
+```json
+{
+  "status": "ok",
+  "data": [
+    {
+      "WddCode": 1234,
+      "ObjType": "22",
+      "BPName": "ABC Supplies",
+      "PONumber": "PO-001",
+      "TotalAmount": 1250,
+      "CreatedBy": "John Doe"
+    }
+  ]
+}
+```
+
+### POST /api/decide
+
+Approve or reject a PO directly from the dashboard. Sends WhatsApp confirmation to CONFIRMATION_PHONES.
+
+**Request:**
+```json
+{
+  "wdd_code": 1234,
+  "action": "APPROVE",
+  "user": "Admin"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Approved successfully"
 }
 ```
 
@@ -343,21 +386,30 @@ Sent to CONFIRMATION_PHONE list after approval/rejection is recorded.
 *PO Action Confirmed*
 
 *WDD Code:* {{wdd_code}}
+*PO Number:* {{po_number}}
 *Document Type:* {{doc_type}}
+*Vendor:* {{vendor}}
+*Total Amount:* {{amount}}
+*Raised By:* {{raised_by}}
+
 *Action:* {{action}}
 *Time:* {{time}}
 
-Your action has been successfully recorded in SAP.
+This action has been successfully recorded in SAP.
 ```
 
-**Parameters (4):**
+**Parameters (8):**
 
-| # | Name     | Description                     | Example                    |
-|---|----------|---------------------------------|----------------------------|
-| 1 | wdd_code | WDD Code number                 | `"1234"`                   |
-| 2 | doc_type | Document type                   | `"Purchase Order"`         |
-| 3 | action   | Action taken                    | `"APPROVED"` or `"REJECTED"` |
-| 4 | time     | Timestamp of action             | `"24 Mar 2026, 10:30 AM"` |
+| # | Name       | Description                          | Example                       |
+|---|------------|--------------------------------------|-------------------------------|
+| 1 | wdd_code   | Unique WDD Code from SAP             | `"1234"`                      |
+| 2 | po_number  | Purchase Order number                | `"PO-2024-001"`               |
+| 3 | doc_type   | Human-readable document type         | `"Purchase Order"`            |
+| 4 | vendor     | Business Partner / Vendor name       | `"ABC Supplies"`              |
+| 5 | amount     | Formatted total amount (no decimals) | `"1,250"`                     |
+| 6 | raised_by  | Name of PO creator                   | `"John Doe"`                  |
+| 7 | action     | Action taken                         | `"APPROVED"` or `"REJECTED"` |
+| 8 | time       | Timestamp of action                  | `"24 Mar 2026, 10:30 AM"`    |
 
 ---
 
@@ -647,19 +699,15 @@ tail -f logs/poll.log
 
 ---
 
-## Systemd Service
+## Systemd Service (Optional)
 
-### Install
-
-```bash
-sudo cp service /etc/systemd/system/whatsapp_bot.service
-sudo systemctl daemon-reload
-sudo systemctl enable whatsapp_bot
-```
+Create a systemd unit file at `/etc/systemd/system/whatsapp_bot.service` to run the bot as a service.
 
 ### Commands
 
 ```bash
+sudo systemctl daemon-reload
+sudo systemctl enable whatsapp_bot
 sudo systemctl start whatsapp_bot       # Start
 sudo systemctl stop whatsapp_bot        # Stop
 sudo systemctl restart whatsapp_bot     # Restart
