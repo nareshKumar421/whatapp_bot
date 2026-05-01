@@ -83,6 +83,7 @@ async def receive_webhook(request: Request):
 
         wdd_info = get_wdd_status(wdd_code)
         doc_type = map_doc_type(wdd_info["ObjType"]) if wdd_info else "Purchase Order"
+        po_details = get_po_details(wdd_code) or {}
 
         # Check if PO is already processed — send error template instead
         if wdd_info and wdd_info["ProcesStat"] != "W":
@@ -115,7 +116,6 @@ async def receive_webhook(request: Request):
 
         log_webhook.info("SAP result for WddCode=%s: %s", wdd_code, result)
 
-        po_details = get_po_details(wdd_code) or {}
         send_confirmation_message(
             wdd_code=wdd_code,
             action=action,

@@ -50,6 +50,7 @@ def _send_items_template(to_phone: str, wdd_code: int, po_number: str, items: li
         demand = item.get("POQuantity") or 0
         instock = item.get("CurrentStock") or 0
         benchmark = item.get("MinimumStock") or 0
+        mrp = item.get("MRP") or 0
 
         payload = {
             "messaging_product": "whatsapp",
@@ -67,6 +68,7 @@ def _send_items_template(to_phone: str, wdd_code: int, po_number: str, items: li
                             {"type": "text", "parameter_name": "demand", "text": f"{demand:,.0f}"},
                             {"type": "text", "parameter_name": "instock", "text": f"{instock:,.0f}"},
                             {"type": "text", "parameter_name": "benchmark", "text": f"{benchmark:,.0f}"},
+                            {"type": "text", "parameter_name": "mrp", "text": f"{mrp:,.0f}"},
                         ],
                     }
                 ],

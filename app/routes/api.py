@@ -64,6 +64,7 @@ async def api_decide(request: Request):
         )
 
     doc_type = map_doc_type(wdd_info["ObjType"])
+    po_details = get_po_details(wdd_code) or {}
 
     result = apply_approval_decision(
         wdd_code=wdd_code,
@@ -85,7 +86,6 @@ async def api_decide(request: Request):
         add_activity(action, f"WddCode={wdd_code} | {doc_type} | via Dashboard by {user}")
 
         # Send WhatsApp notification to confirmation phones
-        po_details = get_po_details(wdd_code) or {}
         send_confirmation_message(
             wdd_code=wdd_code,
             action=action,

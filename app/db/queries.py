@@ -10,7 +10,7 @@ def get_pending_approvals() -> list[dict]:
     """Returns pending PO approvals from view_whatsapp_bot, grouped by WddCode.
 
     Each returned dict has header fields plus an 'items' list containing
-    ItemCode, ItemName, POQuantity, RequiredPlannedQty, CurrentStock, MinimumStock.
+    ItemCode, ItemName, POQuantity, RequiredPlannedQty, CurrentStock, MinimumStock, MRP.
     """
     conn = get_conn()
     cur = conn.cursor()
@@ -21,7 +21,7 @@ def get_pending_approvals() -> list[dict]:
                 "ApproverID", "ApproverName", "ApproverEmail",
                 "CreatedBy", "BPName", "PONumber", "TotalAmount", "Comments",
                 "ItemCode", "ItemName", "POQuantity",
-                "RequiredPlannedQty", "CurrentStock", "MinimumStock"
+                "RequiredPlannedQty", "CurrentStock", "MinimumStock", "MRP"
             FROM {t("view_whatsapp_bot")}
         """)
         cols = [col[0] for col in cur.description]
@@ -54,6 +54,7 @@ def get_pending_approvals() -> list[dict]:
                 "RequiredPlannedQty": row["RequiredPlannedQty"],
                 "CurrentStock": row["CurrentStock"],
                 "MinimumStock": row["MinimumStock"],
+                "MRP": row["MRP"],
             })
 
         results = list(grouped.values())
@@ -69,7 +70,12 @@ def get_pending_approvals() -> list[dict]:
 
 
 def get_po_details(wdd_code: int) -> Optional[dict]:
-    """Returns PO header details (BPName, PONumber, TotalAmount, CreatedBy) for a given WddCode."""
+    """Returns PO header details for a given WddCode.
+
+    The dashboard/poller view only contains pending approvals, so confirmation
+    messages must also be able to read already-processed documents from SAP base
+    tables after an approval/rejection is applied.
+    """
     conn = get_conn()
     cur = conn.cursor()
     try:
@@ -77,12 +83,38 @@ def get_po_details(wdd_code: int) -> Optional[dict]:
             SELECT "BPName", "PONumber", "TotalAmount", "CreatedBy"
             FROM   {t("view_whatsapp_bot")}
             WHERE  "WddCode" = ?
-            FETCH FIRST 1 ROWS ONLY
+            LIMIT 1
         """, (wdd_code,))
         row = cur.fetchone()
-        if not row:
-            log_hana.warning("WddCode=%s not found in view_whatsapp_bot", wdd_code)
+        if row:
+            return {
+                "BPName": row[0] or "N/A",
+                "PONumber": row[1] or "N/A",
+                "TotalAmount": row[2] or 0,
+                "CreatedBy": row[3] or "N/A",
+            }
+
+        log_hana.info("WddCode=%s not found in view_whatsapp_bot; trying ODRF fallback", wdd_code)
+        cur.execute(f"""
+            SELECT
+                odrf."CardName",
+                odrf."DocNum",
+                odrf."DocTotal",
+                COALESCE(ousr."U_NAME", ousr."USER_CODE")
+            FROM {t("OWDD")} owdd
+            LEFT JOIN {t("ODRF")} odrf
+                   ON odrf."DocEntry" = owdd."DraftEntry"
+                  AND odrf."ObjType" = owdd."ObjType"
+            LEFT JOIN {t("OUSR")} ousr
+                   ON ousr."USERID" = COALESCE(odrf."UserSign", owdd."UserSign")
+            WHERE owdd."WddCode" = ?
+            LIMIT 1
+        """, (wdd_code,))
+        row = cur.fetchone()
+        if not row or row[0] is None:
+            log_hana.warning("WddCode=%s PO details not found in view or ODRF fallback", wdd_code)
             return None
+
         return {
             "BPName": row[0] or "N/A",
             "PONumber": row[1] or "N/A",

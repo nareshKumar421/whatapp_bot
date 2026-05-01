@@ -104,6 +104,7 @@ async def test_items():
                         {"type": "text", "parameter_name": "demand", "text": "500"},
                         {"type": "text", "parameter_name": "instock", "text": "200"},
                         {"type": "text", "parameter_name": "benchmark", "text": "100"},
+                        {"type": "text", "parameter_name": "mrp", "text": "1,250"},
                     ],
                 }
             ],
